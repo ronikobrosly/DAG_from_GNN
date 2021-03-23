@@ -1,23 +1,29 @@
+"""
+Utility functions
+"""
+
+import os
+import glob
+import re
+import pickle
+import math
+
+import networkx as nx
 import numpy as np
+import pandas as pd
+from pandas import ExcelWriter
+from pandas import ExcelFile
+import scipy.linalg as slin
+import scipy.sparse as sp
 import torch
 from torch.utils.data.dataset import TensorDataset
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 import torch.nn as nn
 from torch.autograd import Variable
-import numpy as np
-import scipy.linalg as slin
-import scipy.sparse as sp
-import networkx as nx
-import pandas as pd
-from pandas import ExcelWriter
-from pandas import ExcelFile
-import os
-import glob
-import re
-import pickle
-import math
 from torch.optim.adam import Adam
+
+
 
 # data generating functions
 

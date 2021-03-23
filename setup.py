@@ -19,7 +19,10 @@ setuptools.setup(
     ],
     python_requires='>=3.7.6',
     install_requires=[
-        'black',
-
+        'networkx',
+        'numpy',
+        'pandas',
+        'scipy',
+        'torch'
     ]
 )

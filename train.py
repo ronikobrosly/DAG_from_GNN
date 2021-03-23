@@ -1,27 +1,20 @@
-
-''''
+"""
 Main function for traininng DAG-GNN
+"""
 
-'''
-
-
-from __future__ import division
-from __future__ import print_function
-
-import time
 import argparse
-import pickle
-import os
 import datetime
+import math
+import os
+import pickle
+import time
 
-# import torch
 import torch.optim as optim
 from torch.optim import lr_scheduler
-import math
 
-# import numpy as np
 from utils import *
 from modules import *
+
 
 parser = argparse.ArgumentParser()
 
@@ -100,11 +93,6 @@ parser.add_argument('--encoder-dropout', type=float, default=0.0,
                     help='Dropout rate (1 - keep probability).')
 parser.add_argument('--decoder-dropout', type=float, default=0.0,
                     help='Dropout rate (1 - keep probability).')
-parser.add_argument('--save-folder', type=str, default='logs',
-                    help='Where to save the trained model, leave empty to not save anything.')
-parser.add_argument('--load-folder', type=str, default='',
-                    help='Where to load the trained model if finetunning. ' +
-                         'Leave empty to train from scratch')
 
 
 parser.add_argument('--h_tol', type=float, default = 1e-8,
@@ -135,29 +123,6 @@ print(args)
 torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
-
-if args.dynamic_graph:
-    print("Testing with dynamically re-computed graph.")
-
-# Save model and meta-data. Always saves in a new sub-folder.
-if args.save_folder:
-    exp_counter = 0
-    now = datetime.datetime.now()
-    timestamp = now.isoformat()
-    save_folder = '{}/exp{}/'.format(args.save_folder, timestamp)
-    # safe_name = save_folder.text.replace('/', '_')
-    os.makedirs(save_folder)
-    meta_file = os.path.join(save_folder, 'metadata.pkl')
-    encoder_file = os.path.join(save_folder, 'encoder.pt')
-    decoder_file = os.path.join(save_folder, 'decoder.pt')
-
-    log_file = os.path.join(save_folder, 'log.txt')
-    log = open(log_file, 'w')
-
-    pickle.dump({'args': args}, open(meta_file, "wb"))
-else:
-    print("WARNING: No save_folder provided!" +
-          "Testing (within this script) will throw an error.")
 
 
 # ================================================
@@ -209,13 +174,6 @@ elif args.decoder == 'sem':
                          n_hid=args.decoder_hidden,
                          do_prob=args.decoder_dropout).double()
 
-if args.load_folder:
-    encoder_file = os.path.join(args.load_folder, 'encoder.pt')
-    encoder.load_state_dict(torch.load(encoder_file))
-    decoder_file = os.path.join(args.load_folder, 'decoder.pt')
-    decoder.load_state_dict(torch.load(decoder_file))
-
-    args.save_folder = False
 
 #===================================
 # set up training parameters
@@ -393,17 +351,6 @@ def train(epoch, best_val_loss, lambda_A, c_A, optimizer):
           'ELBO_loss: {:.10f}'.format(np.mean(kl_train)  + np.mean(nll_train)),
           'mse_train: {:.10f}'.format(np.mean(mse_train)),
           'time: {:.4f}s'.format(time.time() - t))
-    if args.save_folder and np.mean(nll_val) < best_val_loss:
-        torch.save(encoder.state_dict(), encoder_file)
-        torch.save(decoder.state_dict(), decoder_file)
-        print('Best model so far, saving...')
-        print('Epoch: {:04d}'.format(epoch),
-              'nll_train: {:.10f}'.format(np.mean(nll_train)),
-              'kl_train: {:.10f}'.format(np.mean(kl_train)),
-              'ELBO_loss: {:.10f}'.format(np.mean(kl_train)  + np.mean(nll_train)),
-              'mse_train: {:.10f}'.format(np.mean(mse_train)),
-              'time: {:.4f}s'.format(time.time() - t), file=log)
-        log.flush()
 
     if 'graph' not in vars():
         print('error on assign')
@@ -473,11 +420,6 @@ try:
             break
 
 
-    if args.save_folder:
-        print("Best Epoch: {:04d}".format(best_epoch), file=log)
-        log.flush()
-
-
 except KeyboardInterrupt:
     print("Done!")
 
@@ -487,8 +429,3 @@ matG1 = np.matrix(origin_A.data.clone().numpy())
 for line in matG1:
     np.savetxt(f1, line, fmt='%.5f')
 f1.closed
-
-
-if log is not None:
-    print(save_folder)
-    log.close()
