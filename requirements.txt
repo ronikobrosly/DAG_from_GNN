@@ -1,0 +1,7 @@
+black
+flask
+networkx
+numpy
+pandas
+pomegranate
+scipy
