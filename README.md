@@ -15,7 +15,7 @@ Given a CSV of many variables, this app will return a Bayesian Network causal st
 Rather than looking at pairwise conditional correlations, Yu et al. reframe the problem
 as one of global, float optimization, and the algorithm returns a weighted adjacency matrix.
 
-By setting a threshold for weighted adjacency matrix (say, any weights > -0.1 and < 0.1 means the two variables aren't connected),
+By setting a threshold for weighted adjacency matrix (say, any weights > -0.3 and < 0.3 means the two variables aren't connected),
 you can produce a binary adjacency matrix, which will tell you which variables are connected (and in what direction).
 
 Many thanks to the authors for creating this approach:
@@ -36,6 +36,11 @@ The back-end requires python >= 3.7.6.
 To play with this locally, first clone the repo via `git clone -b master https://github.com/OrthoProject/Ortho_Web_App.git`. Then create a python virtual environment and install all package dependencies via `pip install -r requirements.txt`.
 
 ## Instructions
+
+
+for now just use `python train.py --data_type discrete --data_filename alarm --data_variable_size 37`
+
+
 
 To run locally, enter your virtual environment with all dependencies installed and run:
 
