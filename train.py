@@ -352,6 +352,6 @@ final_DAG = nx.relabel_nodes(final_DAG, dict(zip(list(range(CONFIG.data_variable
 
 final_DAG.remove_nodes_from(list(nx.isolates(final_DAG)))
 
-nx.draw(final_DAG, node_color="lightcoral", node_size=600, with_labels=True, pos=nx.kamada_kawai_layout(final_DAG))
+nx.draw(final_DAG, node_color="lightcoral", node_size=75, font_size=3, width = 0.5, arrowsize=4, with_labels=True, pos=nx.spring_layout(final_DAG))
 plt.draw()
-plt.savefig("DAG_plot.png", format="PNG", dpi=200)
+plt.savefig("DAG_plot.png", format="PNG", dpi=500)

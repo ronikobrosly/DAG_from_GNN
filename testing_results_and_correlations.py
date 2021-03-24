@@ -1,6 +1,50 @@
+import matplotlib.pyplot as plt
+import networkx as nx
+from networkx.convert_matrix import from_numpy_matrix
 import numpy as np
 import pandas as pd
 import scipy.stats as ss
+
+
+
+#############################################
+# After model is done, experiment with different networkx plot types
+#############################################
+
+# Read in data
+df = pd.read_csv("final_estimated_DAG.csv")
+
+# Drop first column
+df.drop(df.columns[0], axis=1, inplace = True)
+
+# Get variable names
+var_names = list(df.columns)
+
+# Reconstruct the DAG
+final_DAG = from_numpy_matrix(df.to_numpy(), create_using = nx.DiGraph)
+final_DAG = nx.relabel_nodes(final_DAG, dict(zip(list(range(len(var_names))), var_names)))
+
+# Remove isolates
+final_DAG.remove_nodes_from(list(nx.isolates(final_DAG)))
+
+nx.draw(final_DAG, node_color="lightcoral", node_size=75, font_size=3, width = 0.5, arrowsize=4, with_labels=True, pos=nx.spring_layout(final_DAG))
+plt.draw()
+plt.savefig("DAG_plot.png", format="PNG", dpi=500)
+
+plt.clf()
+
+
+
+
+
+
+
+
+
+
+#############################################
+# Read in data and explore correlations
+#############################################
 
 
 # Read in the data
@@ -8,7 +52,7 @@ df = pd.read_csv("data_5000samples.csv")
 
 
 def cramers_corrected_stat(x,y):
-    """ 
+    """
     Calculate Cramers V statistic for categorial-categorial association
     """
     result=-1
@@ -16,7 +60,7 @@ def cramers_corrected_stat(x,y):
         print("First variable is constant")
     elif len(y.value_counts())==1:
         print("Second variable is constant")
-    else:   
+    else:
         conf_matrix=pd.crosstab(x, y)
 
         if conf_matrix.shape[0]==2:
@@ -29,7 +73,7 @@ def cramers_corrected_stat(x,y):
         n = sum(conf_matrix.sum())
         phi2 = chi2/n
         r,k = conf_matrix.shape
-        phi2corr = max(0, phi2 - ((k-1)*(r-1))/(n-1))    
+        phi2corr = max(0, phi2 - ((k-1)*(r-1))/(n-1))
         rcorr = r - ((r-1)**2)/(n-1)
         kcorr = k - ((k-1)**2)/(n-1)
         result=np.sqrt(phi2corr / min( (kcorr-1), (rcorr-1)))
@@ -65,4 +109,3 @@ cramers_corrected_stat(df['MA'], df['BQ'])
 # What if we hold MA constant
 df2 = df[df['MA'] == 0]
 cramers_corrected_stat(df2['HX'], df2['BQ']) # This makes sense, there is an independent association between HX and BQ
-

@@ -10,9 +10,8 @@ class CONFIG:
         pass
 
     data_type = 'discrete'
-    data_filename = 'data_5000samples.csv'
+    data_filename = 'alarm.csv'
     data_sample_size = 5000
-    #data_variable_size = 37
     graph_type = 'erdos-renyi'
     graph_degree = 2
     graph_sem_type = 'linear-gauss'
@@ -31,7 +30,7 @@ class CONFIG:
     seed = 42
     epochs = 300
     batch_size = 50 # note: should be divisible by sample size, otherwise throw an error
-    lr = 1e-4  # basline rate = 1e-3
+    lr = 1e-3  # basline rate = 1e-3
     encoder_hidden = 64
     decoder_hidden = 64
     temp = 0.5
