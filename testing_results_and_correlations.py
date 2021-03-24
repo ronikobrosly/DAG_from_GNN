@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import netgraph
 import networkx as nx
 from networkx.convert_matrix import from_numpy_matrix
 import numpy as np
@@ -27,16 +28,25 @@ final_DAG = nx.relabel_nodes(final_DAG, dict(zip(list(range(len(var_names))), va
 # Remove isolates
 final_DAG.remove_nodes_from(list(nx.isolates(final_DAG)))
 
-nx.draw(final_DAG, node_color="lightcoral", node_size=75, font_size=3, width = 0.5, arrowsize=4, with_labels=True, pos=nx.spring_layout(final_DAG))
-plt.draw()
-plt.savefig("DAG_plot.png", format="PNG", dpi=500)
-
-plt.clf()
-
+# nx.draw(final_DAG, node_color="lightcoral", node_size=75, font_size=3, width = 0.5, arrowsize=4, with_labels=True, pos=nx.spring_layout(final_DAG))
+# plt.draw()
+# plt.savefig("DAG_plot.png", format="PNG", dpi=500)
+# plt.clf()
 
 
 
 
+
+#############################################
+# Experiment with Netgraph (interactive, drag-able nodes)
+#############################################
+new_vars = list(final_DAG.nodes)
+
+fig, ax = plt.subplots(1, 1)
+ax.set(xlim=[-3, 3], ylim=[-3, 3])
+
+interactive_plot = netgraph.InteractiveGraph(final_DAG, node_labels=dict(zip(new_vars, list(new_vars))), node_size=25, font_size=35, edge_width = 4, ax=ax)
+plt.show()
 
 
 
