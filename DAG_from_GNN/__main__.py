@@ -17,9 +17,9 @@ import pandas as pd
 import torch.optim as optim
 from torch.optim import lr_scheduler
 
-from utils import *
-from modules import *
-from config import CONFIG
+from DAG_from_GNN.utils import *
+from DAG_from_GNN.modules import *
+from DAG_from_GNN.config import CONFIG
 
 
 CONFIG.cuda = not CONFIG.no_cuda and torch.cuda.is_available()
@@ -325,13 +325,8 @@ try:
         if h_A_new.item() <= h_tol:
             break
 
-
 except KeyboardInterrupt:
     print("Done!")
-
-
-
-
 
 
 
@@ -343,8 +338,7 @@ for column in CONFIG.column_names:
     final_df[column] = np.where(np.abs(final_df[column]) < CONFIG.graph_threshold, 0, 1)
 
 # Save final binary adjacency matrix
-final_df.to_csv("final_estimated_DAG.csv", index = True)
-
+final_df.to_csv("results/final_adjacency_matrix.csv", index = True)
 
 # Draw the DAG
 final_DAG = from_numpy_matrix(final_df.to_numpy(), create_using = nx.DiGraph)
@@ -354,4 +348,4 @@ final_DAG.remove_nodes_from(list(nx.isolates(final_DAG)))
 
 nx.draw(final_DAG, node_color="lightcoral", node_size=75, font_size=3, width = 0.5, arrowsize=4, with_labels=True, pos=nx.spring_layout(final_DAG))
 plt.draw()
-plt.savefig("DAG_plot.png", format="PNG", dpi=500)
+plt.savefig(os.path.expanduser("results/DAG_plot.png"), format="PNG", dpi=500)

@@ -24,7 +24,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 from torch.optim.adam import Adam
 
-from config import CONFIG
+from DAG_from_GNN.config import CONFIG
 
 
 
@@ -221,16 +221,16 @@ def list_files(directory, extension):
 def load_data(config, batch_size=1000, suffix='', debug = False):
 
     # load dataset as numpy array
-    X = np.expand_dims(np.loadtxt(config.data_filename, skiprows =1, delimiter=',', dtype=np.int32), 2)
+    X = np.expand_dims(np.loadtxt(os.path.expanduser("datasets/" + config.data_filename), skiprows =1, delimiter=',', dtype=np.int32), 2)
 
     # get column/variable names
-    df_temp = pd.read_csv(config.data_filename)
+    df_temp = pd.read_csv(os.path.expanduser("datasets/" + config.data_filename))
     config.column_names = df_temp.columns
 
     # get number of columns/variables
     config.data_variable_size = len(config.column_names)
 
-    
+
     feat_train = torch.FloatTensor(X)
     feat_valid = torch.FloatTensor(X)
     feat_test = torch.FloatTensor(X)
