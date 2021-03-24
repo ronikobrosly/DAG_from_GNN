@@ -9,135 +9,40 @@ import os
 import pickle
 import time
 
+import matplotlib.pyplot as plt
+import networkx as nx
+from networkx.convert_matrix import from_numpy_matrix
+import numpy as np
+import pandas as pd
 import torch.optim as optim
 from torch.optim import lr_scheduler
 
 from utils import *
 from modules import *
+from config import CONFIG
 
 
-
-parser = argparse.ArgumentParser()
-
-# -----------data parameters ------
-# configurations
-parser.add_argument('--data_type', type=str, default= 'synthetic',
-                    choices=['synthetic', 'discrete', 'real'],
-                    help='choosing which experiment to do.')
-parser.add_argument('--data_filename', type=str, default= 'alarm',
-                    help='data file name containing the discrete files.')
-parser.add_argument('--data_dir', type=str, default= 'data/',
-                    help='data file name containing the discrete files.')
-parser.add_argument('--data_sample_size', type=int, default=5000,
-                    help='the number of samples of data')
-parser.add_argument('--data_variable_size', type=int, default=10,
-                    help='the number of variables in synthetic generated data')
-parser.add_argument('--graph_type', type=str, default='erdos-renyi',
-                    help='the type of DAG graph by generation method')
-parser.add_argument('--graph_degree', type=int, default=2,
-                    help='the number of degree in generated DAG graph')
-parser.add_argument('--graph_sem_type', type=str, default='linear-gauss',
-                    help='the structure equation model (SEM) parameter type')
-parser.add_argument('--graph_linear_type', type=str, default='nonlinear_2',
-                    help='the synthetic data type: linear -> linear SEM, nonlinear_1 -> x=Acos(x+1)+z, nonlinear_2 -> x=2sin(A(x+0.5))+A(x+0.5)+z')
-parser.add_argument('--edge-types', type=int, default=2,
-                    help='The number of edge types to infer.')
-parser.add_argument('--x_dims', type=int, default=1, #changed here
-                    help='The number of input dimensions: default 1.')
-parser.add_argument('--z_dims', type=int, default=1,
-                    help='The number of latent variable dimensions: default the same as variable size.')
-
-# -----------training hyperparameters
-parser.add_argument('--optimizer', type = str, default = 'Adam',
-                    help = 'the choice of optimizer used')
-parser.add_argument('--graph_threshold', type=  float, default = 0.3,  # 0.3 is good, 0.2 is error prune
-                    help = 'threshold for learned adjacency matrix binarization')
-parser.add_argument('--tau_A', type = float, default=0.0,
-                    help='coefficient for L-1 norm of A.')
-parser.add_argument('--lambda_A',  type = float, default= 0.,
-                    help='coefficient for DAG constraint h(A).')
-parser.add_argument('--c_A',  type = float, default= 1,
-                    help='coefficient for absolute value h(A).')
-parser.add_argument('--use_A_connect_loss',  type = int, default= 0,
-                    help='flag to use A connect loss')
-parser.add_argument('--use_A_positiver_loss', type = int, default = 0,
-                    help = 'flag to enforce A must have positive values')
+CONFIG.cuda = not CONFIG.no_cuda and torch.cuda.is_available()
+CONFIG.factor = not CONFIG.no_factor
 
 
-parser.add_argument('--no-cuda', action='store_true', default=True,
-                    help='Disables CUDA training.')
-parser.add_argument('--seed', type=int, default=42, help='Random seed.')
-parser.add_argument('--epochs', type=int, default= 300,
-                    help='Number of epochs to train.')
-parser.add_argument('--batch-size', type=int, default = 100, # note: should be divisible by sample size, otherwise throw an error
-                    help='Number of samples per batch.')
-parser.add_argument('--lr', type=float, default=3e-3,  # basline rate = 1e-3
-                    help='Initial learning rate.')
-parser.add_argument('--encoder-hidden', type=int, default=64,
-                    help='Number of hidden units.')
-parser.add_argument('--decoder-hidden', type=int, default=64,
-                    help='Number of hidden units.')
-parser.add_argument('--temp', type=float, default=0.5,
-                    help='Temperature for Gumbel softmax.')
-parser.add_argument('--k_max_iter', type = int, default = 1e2,
-                    help ='the max iteration number for searching lambda and c')
-
-parser.add_argument('--encoder', type=str, default='mlp',
-                    help='Type of path encoder model (mlp, or sem).')
-parser.add_argument('--decoder', type=str, default='mlp',
-                    help='Type of decoder model (mlp, or sim).')
-parser.add_argument('--no-factor', action='store_true', default=False,
-                    help='Disables factor graph model.')
-parser.add_argument('--suffix', type=str, default='_springs5',
-                    help='Suffix for training data (e.g. "_charged".')
-parser.add_argument('--encoder-dropout', type=float, default=0.0,
-                    help='Dropout rate (1 - keep probability).')
-parser.add_argument('--decoder-dropout', type=float, default=0.0,
-                    help='Dropout rate (1 - keep probability).')
-
-
-parser.add_argument('--h_tol', type=float, default = 1e-8,
-                    help='the tolerance of error of h(A) to zero')
-parser.add_argument('--prediction-steps', type=int, default=10, metavar='N',
-                    help='Num steps to predict before re-using teacher forcing.')
-parser.add_argument('--lr-decay', type=int, default=200,
-                    help='After how epochs to decay LR by a factor of gamma.')
-parser.add_argument('--gamma', type=float, default= 1.0,
-                    help='LR decay factor.')
-parser.add_argument('--skip-first', action='store_true', default=False,
-                    help='Skip first edge type in decoder, i.e. it represents no-edge.')
-parser.add_argument('--var', type=float, default=5e-5,
-                    help='Output variance.')
-parser.add_argument('--hard', action='store_true', default=False,
-                    help='Uses discrete samples in training forward pass.')
-parser.add_argument('--prior', action='store_true', default=False,
-                    help='Whether to use sparsity prior.')
-parser.add_argument('--dynamic-graph', action='store_true', default=False,
-                    help='Whether test with dynamically re-computed graph.')
-
-args = parser.parse_args()
-args.cuda = not args.no_cuda and torch.cuda.is_available()
-args.factor = not args.no_factor
-print(args)
-
-
-torch.manual_seed(args.seed)
-if args.cuda:
-    torch.cuda.manual_seed(args.seed)
+torch.manual_seed(CONFIG.seed)
+if CONFIG.cuda:
+    torch.cuda.manual_seed(CONFIG.seed)
 
 
 # ================================================
 # get data: experiments = {synthetic SEM, ALARM}
 # ================================================
-# train_loader, valid_loader, test_loader, ground_truth_G = load_data( args, args.batch_size, args.suffix)
-train_loader, valid_loader, test_loader = load_data( args, args.batch_size, args.suffix)
+# train_loader, valid_loader, test_loader, ground_truth_G = load_data( args, CONFIG.batch_size, CONFIG.suffix)
+train_loader, valid_loader, test_loader, CONFIG = load_data( CONFIG, CONFIG.batch_size, CONFIG.suffix)
 
 
 #===================================
 # load modules
 #===================================
 # Generate off-diagonal interaction graph
-off_diag = np.ones([args.data_variable_size, args.data_variable_size]) - np.eye(args.data_variable_size)
+off_diag = np.ones([CONFIG.data_variable_size, CONFIG.data_variable_size]) - np.eye(CONFIG.data_variable_size)
 
 rel_rec = np.array(encode_onehot(np.where(off_diag)[1]), dtype=np.float64)
 rel_send = np.array(encode_onehot(np.where(off_diag)[0]), dtype=np.float64)
@@ -145,57 +50,57 @@ rel_rec = torch.DoubleTensor(rel_rec)
 rel_send = torch.DoubleTensor(rel_send)
 
 # add adjacency matrix A
-num_nodes = args.data_variable_size
+num_nodes = CONFIG.data_variable_size
 adj_A = np.zeros((num_nodes, num_nodes))
 
 
-if args.encoder == 'mlp':
-    encoder = MLPEncoder(args.data_variable_size * args.x_dims, args.x_dims, args.encoder_hidden,
-                         int(args.z_dims), adj_A,
-                         batch_size = args.batch_size,
-                         do_prob = args.encoder_dropout, factor = args.factor).double()
-elif args.encoder == 'sem':
-    encoder = SEMEncoder(args.data_variable_size * args.x_dims, args.encoder_hidden,
-                         int(args.z_dims), adj_A,
-                         batch_size = args.batch_size,
-                         do_prob = args.encoder_dropout, factor = args.factor).double()
+if CONFIG.encoder == 'mlp':
+    encoder = MLPEncoder(CONFIG.data_variable_size * CONFIG.x_dims, CONFIG.x_dims, CONFIG.encoder_hidden,
+                         int(CONFIG.z_dims), adj_A,
+                         batch_size = CONFIG.batch_size,
+                         do_prob = CONFIG.encoder_dropout, factor = CONFIG.factor).double()
+elif CONFIG.encoder == 'sem':
+    encoder = SEMEncoder(CONFIG.data_variable_size * CONFIG.x_dims, CONFIG.encoder_hidden,
+                         int(CONFIG.z_dims), adj_A,
+                         batch_size = CONFIG.batch_size,
+                         do_prob = CONFIG.encoder_dropout, factor = CONFIG.factor).double()
 
-if args.decoder == 'mlp':
-    decoder = MLPDecoder(args.data_variable_size * args.x_dims,
-                         args.z_dims, args.x_dims, encoder,
-                         data_variable_size = args.data_variable_size,
-                         batch_size = args.batch_size,
-                         n_hid=args.decoder_hidden,
-                         do_prob=args.decoder_dropout).double()
-elif args.decoder == 'sem':
-    decoder = SEMDecoder(args.data_variable_size * args.x_dims,
-                         args.z_dims, 2, encoder,
-                         data_variable_size = args.data_variable_size,
-                         batch_size = args.batch_size,
-                         n_hid=args.decoder_hidden,
-                         do_prob=args.decoder_dropout).double()
+if CONFIG.decoder == 'mlp':
+    decoder = MLPDecoder(CONFIG.data_variable_size * CONFIG.x_dims,
+                         CONFIG.z_dims, CONFIG.x_dims, encoder,
+                         data_variable_size = CONFIG.data_variable_size,
+                         batch_size = CONFIG.batch_size,
+                         n_hid=CONFIG.decoder_hidden,
+                         do_prob=CONFIG.decoder_dropout).double()
+elif CONFIG.decoder == 'sem':
+    decoder = SEMDecoder(CONFIG.data_variable_size * CONFIG.x_dims,
+                         CONFIG.z_dims, 2, encoder,
+                         data_variable_size = CONFIG.data_variable_size,
+                         batch_size = CONFIG.batch_size,
+                         n_hid=CONFIG.decoder_hidden,
+                         do_prob=CONFIG.decoder_dropout).double()
 
 
 #===================================
 # set up training parameters
 #===================================
-if args.optimizer == 'Adam':
-    optimizer = optim.Adam(list(encoder.parameters()) + list(decoder.parameters()),lr=args.lr)
-elif args.optimizer == 'LBFGS':
+if CONFIG.optimizer == 'Adam':
+    optimizer = optim.Adam(list(encoder.parameters()) + list(decoder.parameters()),lr=CONFIG.lr)
+elif CONFIG.optimizer == 'LBFGS':
     optimizer = optim.LBFGS(list(encoder.parameters()) + list(decoder.parameters()),
-                           lr=args.lr)
-elif args.optimizer == 'SGD':
+                           lr=CONFIG.lr)
+elif CONFIG.optimizer == 'SGD':
     optimizer = optim.SGD(list(encoder.parameters()) + list(decoder.parameters()),
-                           lr=args.lr)
+                           lr=CONFIG.lr)
 
-scheduler = lr_scheduler.StepLR(optimizer, step_size=args.lr_decay,
-                                gamma=args.gamma)
+scheduler = lr_scheduler.StepLR(optimizer, step_size=CONFIG.lr_decay,
+                                gamma=CONFIG.gamma)
 
 # Linear indices of an upper triangular mx, used for acc calculation
-triu_indices = get_triu_offdiag_indices(args.data_variable_size)
-tril_indices = get_tril_offdiag_indices(args.data_variable_size)
+triu_indices = get_triu_offdiag_indices(CONFIG.data_variable_size)
+tril_indices = get_tril_offdiag_indices(CONFIG.data_variable_size)
 
-if args.prior:
+if CONFIG.prior:
     prior = np.array([0.91, 0.03, 0.03, 0.03])  # hard coded for now
     print("Using prior")
     print(prior)
@@ -204,10 +109,10 @@ if args.prior:
     log_prior = torch.unsqueeze(log_prior, 0)
     log_prior = Variable(log_prior)
 
-    if args.cuda:
+    if CONFIG.cuda:
         log_prior = log_prior.cuda()
 
-if args.cuda:
+if CONFIG.cuda:
     encoder.cuda()
     decoder.cuda()
     rel_rec = rel_rec.cuda()
@@ -268,12 +173,12 @@ def train(epoch, best_val_loss, lambda_A, c_A, optimizer):
 
 
     # update optimizer
-    optimizer, lr = update_optimizer(optimizer, args.lr, c_A)
+    optimizer, lr = update_optimizer(optimizer, CONFIG.lr, c_A)
 
 
     for batch_idx, (data, relations) in enumerate(train_loader):
 
-        if args.cuda:
+        if CONFIG.cuda:
             data, relations = data.cuda(), relations.cuda()
         data, relations = Variable(data).double(), Variable(relations).double()
 
@@ -285,7 +190,7 @@ def train(epoch, best_val_loss, lambda_A, c_A, optimizer):
         enc_x, logits, origin_A, adj_A_tilt_encoder, z_gap, z_positive, myA, Wa = encoder(data, rel_rec, rel_send)  # logits is of size: [num_sims, z_dims]
         edges = logits
 
-        dec_x, output, adj_A_tilt_decoder = decoder(data, edges, args.data_variable_size * args.x_dims, rel_rec, rel_send, origin_A, adj_A_tilt_encoder, Wa)
+        dec_x, output, adj_A_tilt_decoder = decoder(data, edges, CONFIG.data_variable_size * CONFIG.x_dims, rel_rec, rel_send, origin_A, adj_A_tilt_encoder, Wa)
 
         if torch.sum(output != output):
             print('nan error\n')
@@ -305,33 +210,33 @@ def train(epoch, best_val_loss, lambda_A, c_A, optimizer):
 
         # add A loss
         one_adj_A = origin_A # torch.mean(adj_A_tilt_decoder, dim =0)
-        sparse_loss = args.tau_A * torch.sum(torch.abs(one_adj_A))
+        sparse_loss = CONFIG.tau_A * torch.sum(torch.abs(one_adj_A))
 
         # other loss term
-        if args.use_A_connect_loss:
-            connect_gap = A_connect_loss(one_adj_A, args.graph_threshold, z_gap)
+        if CONFIG.use_A_connect_loss:
+            connect_gap = A_connect_loss(one_adj_A, CONFIG.graph_threshold, z_gap)
             loss += lambda_A * connect_gap + 0.5 * c_A * connect_gap * connect_gap
 
-        if args.use_A_positiver_loss:
+        if CONFIG.use_A_positiver_loss:
             positive_gap = A_positive_loss(one_adj_A, z_positive)
             loss += .1 * (lambda_A * positive_gap + 0.5 * c_A * positive_gap * positive_gap)
 
         # compute h(A)
-        h_A = _h_A(origin_A, args.data_variable_size)
+        h_A = _h_A(origin_A, CONFIG.data_variable_size)
         loss += lambda_A * h_A + 0.5 * c_A * h_A * h_A + 100. * torch.trace(origin_A*origin_A) + sparse_loss #+  0.01 * torch.sum(variance * variance)
 
 
         loss.backward()
         loss = optimizer.step()
 
-        myA.data = stau(myA.data, args.tau_A*lr)
+        myA.data = stau(myA.data, CONFIG.tau_A*lr)
 
         if torch.sum(origin_A != origin_A):
             print('nan error\n')
 
         # compute metrics
         graph = origin_A.data.clone().numpy()
-        graph[np.abs(graph) < args.graph_threshold] = 0
+        graph[np.abs(graph) < CONFIG.graph_threshold] = 0
 
 
 
@@ -372,17 +277,17 @@ best_ELBO_graph = []
 best_NLL_graph = []
 best_MSE_graph = []
 # optimizer step on hyparameters
-c_A = args.c_A
-lambda_A = args.lambda_A
+c_A = CONFIG.c_A
+lambda_A = CONFIG.lambda_A
 h_A_new = torch.tensor(1.)
-h_tol = args.h_tol
-k_max_iter = int(args.k_max_iter)
+h_tol = CONFIG.h_tol
+k_max_iter = int(CONFIG.k_max_iter)
 h_A_old = np.inf
 
 try:
     for step_k in range(k_max_iter):
         while c_A < 1e+20:
-            for epoch in range(args.epochs):
+            for epoch in range(CONFIG.epochs):
                 ELBO_loss, NLL_loss, MSE_loss, graph, origin_A = train(epoch, best_ELBO_loss, lambda_A, c_A, optimizer)
                 if ELBO_loss < best_ELBO_loss:
                     best_ELBO_loss = ELBO_loss
@@ -406,7 +311,7 @@ try:
 
             # update parameters
             A_new = origin_A.data.clone()
-            h_A_new = _h_A(A_new, args.data_variable_size)
+            h_A_new = _h_A(A_new, CONFIG.data_variable_size)
             if h_A_new.item() > 0.25 * h_A_old:
                 c_A*=10
             else:
@@ -425,8 +330,26 @@ except KeyboardInterrupt:
     print("Done!")
 
 
-f1 = open('predG', 'w')
+
+
+
+
+
+# Create binary adjacency matrix using config threshold
 matG1 = np.matrix(origin_A.data.clone().numpy())
-for line in matG1:
-    np.savetxt(f1, line, fmt='%.5f')
-f1.closed
+final_df = pd.DataFrame(matG1, index = CONFIG.column_names, columns = CONFIG.column_names)
+
+for column in CONFIG.column_names:
+    final_df[column] = np.where(np.abs(final_df[column]) < CONFIG.graph_threshold, 0, 1)
+
+# Save final binary adjacency matrix
+final_df.to_csv("final_estimated_DAG.csv", index = True)
+
+
+# Draw the DAG
+final_DAG = from_numpy_matrix(final_df.to_numpy(), create_using = nx.DiGraph)
+final_DAG = nx.relabel_nodes(final_DAG, dict(zip(list(range(CONFIG.data_variable_size)), CONFIG.column_names)))
+
+nx.draw(final_DAG, node_color="lightcoral", node_size=600, with_labels=True, pos=nx.spring_layout(final_DAG))
+plt.draw()
+plt.show()

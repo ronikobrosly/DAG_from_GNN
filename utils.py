@@ -2,11 +2,12 @@
 Utility functions
 """
 
-import os
+import csv
 import glob
-import re
-import pickle
 import math
+import os
+import pickle
+import re
 
 import networkx as nx
 import numpy as np
@@ -23,118 +24,8 @@ import torch.nn as nn
 from torch.autograd import Variable
 from torch.optim.adam import Adam
 
+from config import CONFIG
 
-
-# data generating functions
-
-def simulate_random_dag(d: int,
-                        degree: float,
-                        graph_type: str,
-                        w_range: tuple = (0.5, 2.0)) -> nx.DiGraph:
-    """Simulate random DAG with some expected degree.
-
-    Args:
-        d: number of nodes
-        degree: expected node degree, in + out
-        graph_type: {erdos-renyi, barabasi-albert, full}
-        w_range: weight range +/- (low, high)
-
-    Returns:
-        G: weighted DAG
-    """
-    if graph_type == 'erdos-renyi':
-        prob = float(degree) / (d - 1)
-        B = np.tril((np.random.rand(d, d) < prob).astype(float), k=-1)
-    elif graph_type == 'barabasi-albert':
-        m = int(round(degree / 2))
-        B = np.zeros([d, d])
-        bag = [0]
-        for ii in range(1, d):
-            dest = np.random.choice(bag, size=m)
-            for jj in dest:
-                B[ii, jj] = 1
-            bag.append(ii)
-            bag.extend(dest)
-    elif graph_type == 'full':  # ignore degree, only for experimental use
-        B = np.tril(np.ones([d, d]), k=-1)
-    else:
-        raise ValueError('unknown graph type')
-    # random permutation
-    P = np.random.permutation(np.eye(d, d))  # permutes first axis only
-    B_perm = P.T.dot(B).dot(P)
-    U = np.random.uniform(low=w_range[0], high=w_range[1], size=[d, d])
-    U[np.random.rand(d, d) < 0.5] *= -1
-    W = (B_perm != 0).astype(float) * U
-    G = nx.DiGraph(W)
-    return G
-
-
-def simulate_sem(G: nx.DiGraph,
-                 n: int, x_dims: int,
-                 sem_type: str,
-                 linear_type: str,
-                 noise_scale: float = 1.0) -> np.ndarray:
-    """Simulate samples from SEM with specified type of noise.
-
-    Args:
-        G: weigthed DAG
-        n: number of samples
-        sem_type: {linear-gauss,linear-exp,linear-gumbel}
-        noise_scale: scale parameter of noise distribution in linear SEM
-
-    Returns:
-        X: [n,d] sample matrix
-    """
-    W = nx.to_numpy_array(G)
-    d = W.shape[0]
-    X = np.zeros([n, d, x_dims])
-    ordered_vertices = list(nx.topological_sort(G))
-    assert len(ordered_vertices) == d
-    for j in ordered_vertices:
-        parents = list(G.predecessors(j))
-        if linear_type == 'linear':
-            eta = X[:, parents, 0].dot(W[parents, j])
-        elif linear_type == 'nonlinear_1':
-            eta = np.cos(X[:, parents, 0] + 1).dot(W[parents, j])
-        elif linear_type == 'nonlinear_2':
-            eta = (X[:, parents, 0]+0.5).dot(W[parents, j])
-        else:
-            raise ValueError('unknown linear data type')
-
-        if sem_type == 'linear-gauss':
-            if linear_type == 'linear':
-                X[:, j, 0] = eta + np.random.normal(scale=noise_scale, size=n)
-            elif linear_type == 'nonlinear_1':
-                X[:, j, 0] = eta + np.random.normal(scale=noise_scale, size=n)
-            elif linear_type == 'nonlinear_2':
-                X[:, j, 0] = 2.*np.sin(eta) + eta + np.random.normal(scale=noise_scale, size=n)
-        elif sem_type == 'linear-exp':
-            X[:, j, 0] = eta + np.random.exponential(scale=noise_scale, size=n)
-        elif sem_type == 'linear-gumbel':
-            X[:, j, 0] = eta + np.random.gumbel(scale=noise_scale, size=n)
-        else:
-            raise ValueError('unknown sem type')
-    if x_dims > 1 :
-        for i in range(x_dims-1):
-            X[:, :, i+1] = np.random.normal(scale=noise_scale, size=1)*X[:, :, 0] + np.random.normal(scale=noise_scale, size=1) + np.random.normal(scale=noise_scale, size=(n, d))
-        X[:, :, 0] = np.random.normal(scale=noise_scale, size=1) * X[:, :, 0] + np.random.normal(scale=noise_scale, size=1) + np.random.normal(scale=noise_scale, size=(n, d))
-    return X
-
-
-def simulate_population_sample(W: np.ndarray,
-                               Omega: np.ndarray) -> np.ndarray:
-    """Simulate data matrix X that matches population least squares.
-
-    Args:
-        W: [d,d] adjacency matrix
-        Omega: [d,d] noise covariance matrix
-
-    Returns:
-        X: [d,d] sample matrix
-    """
-    d = W.shape[0]
-    X = np.sqrt(d) * slin.sqrtm(Omega).dot(np.linalg.pinv(np.eye(d) - W))
-    return X
 
 
 def count_accuracy(G_true: nx.DiGraph,
@@ -327,35 +218,19 @@ def binary_accuracy(output, labels):
 def list_files(directory, extension):
     return (f for f in os.listdir(directory) if f.endswith('_graph' + extension))
 
+def load_data(config, batch_size=1000, suffix='', debug = False):
 
-def read_BNrep(args):
-    '''load results from BN repository'''
+    # load dataset as numpy array
+    X = np.expand_dims(np.loadtxt(config.data_filename, skiprows =1, delimiter=',', dtype=np.int32), 2)
 
-    # read file
-    all_data = np.expand_dims(np.loadtxt("alarm.csv", skiprows =0, delimiter=',', dtype=np.int32), 2)
-    return all_data # in dictionary
+    # get column/variable names
+    df_temp = pd.read_csv(config.data_filename)
+    config.column_names = df_temp.columns
 
-def load_data_discrete(args, batch_size=1000, suffix='', debug = False):
-    #  # configurations
-    n, d = args.data_sample_size, args.data_variable_size
-    graph_type, degree, sem_type = args.graph_type, args.graph_degree, args.graph_sem_type
+    # get number of columns/variables
+    config.data_variable_size = len(config.column_names)
 
-    if args.data_type == 'synthetic':
-        # generate data
-        G = simulate_random_dag(d, degree, graph_type)
-        X = simulate_sem(G, n, sem_type)
-
-    elif args.data_type == 'discrete':
-        # get benchmark discrete data
-        if args.data_filename.endswith('.pkl'):
-            with open(os.path.join(args.data_dir, args.data_filename), 'rb') as handle:
-                X = pickle.load(handle)
-        else:
-            all_data = read_BNrep(args)
-            X = all_data['1000']['1']
-
-    max_X_card = np.amax(X) + 1
-
+    
     feat_train = torch.FloatTensor(X)
     feat_valid = torch.FloatTensor(X)
     feat_test = torch.FloatTensor(X)
@@ -369,43 +244,7 @@ def load_data_discrete(args, batch_size=1000, suffix='', debug = False):
     valid_data_loader = DataLoader(valid_data, batch_size=batch_size)
     test_data_loader = DataLoader(test_data, batch_size=batch_size)
 
-    return train_data_loader, valid_data_loader, test_data_loader, max_X_card, X
-
-def load_data(args, batch_size=1000, suffix='', debug = False):
-    #  # configurations
-    n, d = args.data_sample_size, args.data_variable_size
-    graph_type, degree, sem_type, linear_type = args.graph_type, args.graph_degree, args.graph_sem_type, args.graph_linear_type
-    x_dims = args.x_dims
-
-    if args.data_type == 'synthetic':
-        # generate data
-        G = simulate_random_dag(d, degree, graph_type)
-        X = simulate_sem(G, n, x_dims, sem_type, linear_type)
-
-    elif args.data_type == 'discrete':
-        # get benchmark discrete data
-        if args.data_filename.endswith('.pkl'):
-            with open(os.path.join(args.data_dir, args.data_filename), 'rb') as handle:
-                X = pickle.load(handle)
-        else:
-            all_data = read_BNrep(args)
-            X = all_data
-
-
-    feat_train = torch.FloatTensor(X)
-    feat_valid = torch.FloatTensor(X)
-    feat_test = torch.FloatTensor(X)
-
-    # reconstruct itself
-    train_data = TensorDataset(feat_train, feat_train)
-    valid_data = TensorDataset(feat_valid, feat_train)
-    test_data = TensorDataset(feat_test, feat_train)
-
-    train_data_loader = DataLoader(train_data, batch_size=batch_size)
-    valid_data_loader = DataLoader(valid_data, batch_size=batch_size)
-    test_data_loader = DataLoader(test_data, batch_size=batch_size)
-
-    return train_data_loader, valid_data_loader, test_data_loader
+    return train_data_loader, valid_data_loader, test_data_loader, config
 
 
 def to_2d_idx(idx, num_cols):
