@@ -1,8 +1,4 @@
-# DAG_from_GNN
-
-WORK IN PROGRESS
-
-
+# DAG_from_GNN (Directed Acyclic Graphs from Graph Neural Networks)
 
 ## Table of Contents
 
@@ -17,7 +13,7 @@ This repo contains a clean, python implementation of Yu et al.'s DAG-GNN algorit
 Given a CSV of many variables, this app will return a Bayesian Network causal structure.
 
 Rather than looking at pairwise conditional correlations, Yu et al. reframe the problem
-as one of global, float optimization, and the algorithm returns a weighted adjacency matrix.
+as one of optimization of a continuous function, and the algorithm returns a weighted adjacency matrix.
 
 By setting a threshold for weighted adjacency matrix (say, any weights > -0.3 and < 0.3 means the two variables aren't connected),
 you can produce a binary adjacency matrix, which will tell you which variables are connected (and in what direction).
@@ -41,11 +37,22 @@ To play with this locally, first clone the repo via `git clone -b master https:/
 
 ## Instructions
 
+To run locally, enter your virtual environment and ensure that all dependencies have been installed.
+Ensure that your input data is a properly formatted CSV file. The first line of the file should
+be the header with the column names. Cell values below the header should only be integers,
+representing categories (ensure these are only categorical variables). Place this input CSV
+in the `datasets` folder of the app.
 
-for now just use `python train.py --data_type discrete --data_filename alarm --data_variable_size 37`
+Open `DAG_from_GNN/config.py` in your editor and edit parameters as you see fit.
+Note: At a minimum, you must change the `data_filename` parameter to match the filename
+of your input dataset.
 
+Now run the following:
 
+`python -m DAG_from_GNN`
 
-To run locally, enter your virtual environment with all dependencies installed and run:
+Press `CTRL + C` to stop training. Once training has completed, results will be
+saved in the `results` folder. These include:
 
-`python train.py <your CSV data file name here>`
+* A plot of the final estimated structure of the DAG as a `.png` file
+* A CSV of the final estimated adjacency matrix

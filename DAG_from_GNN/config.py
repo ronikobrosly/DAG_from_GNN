@@ -9,8 +9,12 @@ class CONFIG:
     def __init__(self):
         pass
 
-    data_type = 'discrete'
+    # You must change this to the filename you wish to use as input data!
     data_filename = 'alarm.csv'
+
+
+    data_type = 'discrete'
+
     data_sample_size = 5000
     graph_type = 'erdos-renyi'
     graph_degree = 2
