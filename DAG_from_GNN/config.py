@@ -12,15 +12,6 @@ class CONFIG:
     # You must change this to the filename you wish to use as input data!
     data_filename = 'alarm.csv'
 
-
-    data_type = 'discrete'
-
-    data_sample_size = 5000
-    graph_type = 'erdos-renyi'
-    graph_degree = 2
-    graph_sem_type = 'linear-gauss'
-    graph_linear_type = 'nonlinear_2'
-    edge_types = 2
     x_dims = 1
     z_dims = 1
     optimizer = 'Adam'

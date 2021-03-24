@@ -46,10 +46,8 @@ class MLPEncoder(nn.Module):
         if torch.sum(self.adj_A != self.adj_A):
             print('nan error \n')
 
-        # to amplify the value of A and accelerate convergence.
         adj_A1 = torch.sinh(3.*self.adj_A)
 
-        # adj_Aforz = I-A^T
         adj_Aforz = preprocess_adj_new(adj_A1)
 
         adj_A = torch.eye(adj_A1.size()[0]).double()
@@ -133,7 +131,6 @@ class SEMEncoder(nn.Module):
 
         adj_A1 = torch.sinh(3.*self.adj_A)
 
-        # adj_A = I-A^T, adj_A_inv = (I-A^T)^(-1)
         adj_A = preprocess_adj_new((adj_A1))
         adj_A_inv = preprocess_adj_new1((adj_A1))
 
@@ -143,7 +140,6 @@ class SEMEncoder(nn.Module):
         return inputs-meanF, logits, adj_A1, adj_A, self.z, self.z_positive, self.adj_A
 
 
-#[YY] delete it?
 class MLPDDecoder(nn.Module):
     """MLP decoder module. OLD DON"T USE
     """
@@ -156,13 +152,8 @@ class MLPDDecoder(nn.Module):
         self.out_fc1 = nn.Linear(n_in_z, n_hid, bias = True)
         self.out_fc2 = nn.Linear(n_hid, n_hid, bias = True)
         self.out_fc3 = nn.Linear(n_hid, n_out, bias = True)
-#        self.out_fc3 = nn.Linear(n_hid, n_in_node)
         self.bn1 = nn.BatchNorm1d(n_in_node * 1, affine=True)
-#         self.W3 = Variable(torch.from_numpy(W3).float())
-#         self.W4 = Variable(torch.from_numpy(W4).float())
 
-        # TODO check if this is indeed correct
-        #self.adj_A = encoder.adj_A
         self.batch_size = batch_size
         self.data_variable_size = data_variable_size
 
@@ -183,63 +174,33 @@ class MLPDDecoder(nn.Module):
 
     def forward(self, inputs, input_z, n_in_node, rel_rec, rel_send, origin_A, adj_A_tilt, Wa):
 
-        # # copy adj_A batch size
-        # adj_A = self.adj_A.unsqueeze(0).repeat(self.batch_size, 1, 1)
-
-        adj_A_new = torch.eye(origin_A.size()[0]).double()#preprocess_adj(origin_A)#
+        adj_A_new = torch.eye(origin_A.size()[0]).double()
         adj_A_new1 = preprocess_adj_new1(origin_A)
-        mat_z = torch.matmul(adj_A_new1, input_z+Wa)-Wa #.unsqueeze(2) #.squeeze(1).unsqueeze(1).repeat(1, self.data_variable_size, 1) # torch.repeat(torch.transpose(input_z), torch.ones(n_in_node), axis=0)
+        mat_z = torch.matmul(adj_A_new1, input_z+Wa)-Wa
 
         adj_As = adj_A_new
 
-        #mat_z_max = torch.matmul(adj_A_new, my_normalize(mat_z))
-
-#        mat_z_max = (torch.max(mat_z, torch.matmul(adj_As, mat_z)))
         H3 = F.relu(self.out_fc1((mat_z)))
 
-        #H3_max = torch.matmul(adj_A_new, my_normalize(H3))
-#        H3_max = torch.max(H3, torch.matmul(adj_As, H3))
-
-#        H4 = F.relu(self.out_fc2(H3))
-
-        #H4_max = torch.matmul(adj_A_new, my_normalize(H4))
-#        H4_max = torch.max(H4, torch.matmul(adj_As, H4))
-
-#        H5 = F.relu(self.out_fc4(H4_max)) + H3
-
-        #H5_max = torch.max(H5, torch.matmul(adj_As, H5))
-
-        # mu and sigma
         out = self.out_fc3(H3)
 
-        return mat_z, out, adj_A_tilt#, self.adj_A
+        return mat_z, out, adj_A_tilt
 
-#[YY] delete it?
+
 class MLPDiscreteDecoder(nn.Module):
     """MLP decoder module."""
 
     def __init__(self, n_in_node, n_in_z, n_out, encoder, data_variable_size, batch_size,  n_hid,
                  do_prob=0.):
         super(MLPDiscreteDecoder, self).__init__()
-#        self.msg_fc1 = nn.ModuleList(
-#            [nn.Linear(2 * n_in_node, msg_hid) for _ in range(edge_types)])
-#        self.msg_fc2 = nn.ModuleList(
-#            [nn.Linear(msg_hid, msg_out) for _ in range(edge_types)])
-#        self.msg_out_shape = msg_out
-#        self.skip_first_edge_type = skip_first
-
         self.bn0 = nn.BatchNorm1d(n_in_node * 1, affine=True)
         self.out_fc1 = nn.Linear(n_in_z, n_hid, bias = True)
         self.out_fc2 = nn.Linear(n_hid, n_hid, bias = True)
-#        self.out_fc4 = nn.Linear(n_hid, n_hid, bias=True)
-        self.out_fc3 = nn.Linear(n_hid, n_out, bias = True)
-#        self.out_fc3 = nn.Linear(n_hid, n_in_node)
-        self.bn1 = nn.BatchNorm1d(n_in_node * 1, affine=True)
-#         self.W3 = Variable(torch.from_numpy(W3).float())
-#         self.W4 = Variable(torch.from_numpy(W4).float())
 
-        # TODO check if this is indeed correct
-        #self.adj_A = encoder.adj_A
+        self.out_fc3 = nn.Linear(n_hid, n_out, bias = True)
+        self.bn1 = nn.BatchNorm1d(n_in_node * 1, affine=True)
+
+
         self.batch_size = batch_size
         self.data_variable_size = data_variable_size
         self.softmax = nn.Softmax(dim=2)
@@ -261,36 +222,17 @@ class MLPDiscreteDecoder(nn.Module):
 
     def forward(self, inputs, input_z, n_in_node, rel_rec, rel_send, origin_A, adj_A_tilt, Wa):
 
-        # # copy adj_A batch size
-        # adj_A = self.adj_A.unsqueeze(0).repeat(self.batch_size, 1, 1)
-
-        adj_A_new = torch.eye(origin_A.size()[0]).double()#preprocess_adj(origin_A)#
+        adj_A_new = torch.eye(origin_A.size()[0]).double()
         adj_A_new1 = preprocess_adj_new1(origin_A)
-        mat_z = torch.matmul(adj_A_new1, input_z+Wa)-Wa #.unsqueeze(2) #.squeeze(1).unsqueeze(1).repeat(1, self.data_variable_size, 1) # torch.repeat(torch.transpose(input_z), torch.ones(n_in_node), axis=0)
+        mat_z = torch.matmul(adj_A_new1, input_z+Wa)-Wa
 
         adj_As = adj_A_new
 
-        #mat_z_max = torch.matmul(adj_A_new, my_normalize(mat_z))
-
-#        mat_z_max = (torch.max(mat_z, torch.matmul(adj_As, mat_z)))
         H3 = F.relu(self.out_fc1((mat_z)))
 
-        #H3_max = torch.matmul(adj_A_new, my_normalize(H3))
-#        H3_max = torch.max(H3, torch.matmul(adj_As, H3))
+        out = self.softmax(self.out_fc3(H3))
 
-#        H4 = F.relu(self.out_fc2(H3))
-
-        #H4_max = torch.matmul(adj_A_new, my_normalize(H4))
-#        H4_max = torch.max(H4, torch.matmul(adj_As, H4))
-
-#        H5 = F.relu(self.out_fc4(H4_max)) + H3
-
-        #H5_max = torch.max(H5, torch.matmul(adj_As, H5))
-
-        # mu and sigma
-        out = self.softmax(self.out_fc3(H3)) # discretized log
-
-        return mat_z, out, adj_A_tilt#, self.adj_A
+        return mat_z, out, adj_A_tilt
 
 
 class MLPDecoder(nn.Module):
@@ -321,7 +263,6 @@ class MLPDecoder(nn.Module):
 
     def forward(self, inputs, input_z, n_in_node, rel_rec, rel_send, origin_A, adj_A_tilt, Wa):
 
-        #adj_A_new1 = (I-A^T)^(-1)
         adj_A_new1 = preprocess_adj_new1(origin_A)
         mat_z = torch.matmul(adj_A_new1, input_z+Wa)-Wa
 
@@ -346,7 +287,6 @@ class SEMDecoder(nn.Module):
 
     def forward(self, inputs, input_z, n_in_node, rel_rec, rel_send, origin_A, adj_A_tilt, Wa):
 
-        # adj_A_new1 = (I-A^T)^(-1)
         adj_A_new1 = preprocess_adj_new1(origin_A)
         mat_z = torch.matmul(adj_A_new1, input_z + Wa)
         out = mat_z
