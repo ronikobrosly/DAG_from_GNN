@@ -41,7 +41,7 @@ To run locally, enter your virtual environment and ensure that all dependencies 
 Ensure that your input data is a properly formatted CSV file. The first line of the file should
 be the header with the column names. Cell values below the header should only be integers,
 representing categories (ensure these are only categorical variables). Place this input CSV
-in the `datasets` folder of the app.
+in the `datasets` folder of the app. There are two example datasets already in the folder.
 
 Open `DAG_from_GNN/config.py` in your editor and edit parameters as you see fit.
 Note: At a minimum, you must change the `data_filename` parameter to match the filename

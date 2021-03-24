@@ -35,9 +35,7 @@ if CONFIG.cuda:
 # get data: experiments = {synthetic SEM, ALARM}
 # ================================================
 # train_loader, valid_loader, test_loader, ground_truth_G = load_data( args, CONFIG.batch_size, CONFIG.suffix)
-train_loader, valid_loader, test_loader, CONFIG = load_data(
-    CONFIG, CONFIG.batch_size, CONFIG.suffix
-)
+train_loader, valid_loader, test_loader, CONFIG = load_data(CONFIG, CONFIG.batch_size)
 
 
 # ===================================

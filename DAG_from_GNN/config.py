@@ -12,6 +12,15 @@ class CONFIG:
     # You must change this to the filename you wish to use as input data!
     data_filename = "alarm.csv"
 
+    # Epochs
+    epochs = 300
+
+    # Batch size (note: should be divisible by sample size, otherwise throw an error)
+    batch_size = 50
+
+    # Learning rate (baseline rate = 1e-3)
+    lr = 1e-3
+
     x_dims = 1
     z_dims = 1
     optimizer = "Adam"
@@ -23,11 +32,6 @@ class CONFIG:
     use_A_positiver_loss = 0
     no_cuda = True
     seed = 42
-    epochs = 300
-    batch_size = (
-        50  # note: should be divisible by sample size, otherwise throw an error
-    )
-    lr = 1e-3  # basline rate = 1e-3
     encoder_hidden = 64
     decoder_hidden = 64
     temp = 0.5
@@ -35,15 +39,9 @@ class CONFIG:
     encoder = "mlp"
     decoder = "mlp"
     no_factor = False
-    suffix = "_springs5"
     encoder_dropout = 0.0
     decoder_dropout = (0.0,)
     h_tol = 1e-8
-    prediction_steps = 10
     lr_decay = 200
     gamma = 1.0
-    skip_first = False
-    var = 5e-5
-    hard = False
     prior = False
-    dynamic_graph = False
