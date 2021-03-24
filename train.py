@@ -352,4 +352,4 @@ final_DAG = nx.relabel_nodes(final_DAG, dict(zip(list(range(CONFIG.data_variable
 
 nx.draw(final_DAG, node_color="lightcoral", node_size=600, with_labels=True, pos=nx.spring_layout(final_DAG))
 plt.draw()
-plt.show()
+plt.savefig("DAG_plot.png", format="PNG", dpi=200)
