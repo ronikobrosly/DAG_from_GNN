@@ -350,6 +350,8 @@ final_df.to_csv("final_estimated_DAG.csv", index = True)
 final_DAG = from_numpy_matrix(final_df.to_numpy(), create_using = nx.DiGraph)
 final_DAG = nx.relabel_nodes(final_DAG, dict(zip(list(range(CONFIG.data_variable_size)), CONFIG.column_names)))
 
-nx.draw(final_DAG, node_color="lightcoral", node_size=600, with_labels=True, pos=nx.spring_layout(final_DAG))
+final_DAG.remove_nodes_from(list(nx.isolates(final_DAG)))
+
+nx.draw(final_DAG, node_color="lightcoral", node_size=600, with_labels=True, pos=nx.kamada_kawai_layout(final_DAG))
 plt.draw()
 plt.savefig("DAG_plot.png", format="PNG", dpi=200)
