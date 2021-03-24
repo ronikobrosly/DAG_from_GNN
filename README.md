@@ -10,7 +10,7 @@
 
 This repo contains a clean, python implementation of Yu et al.'s DAG-GNN algorithm.
 
-Given a CSV of many variables, this app will return a Bayesian Network causal structure.
+Given a CSV of many variables, this app will learn the structure of a Bayesian Belief Network.
 
 Rather than looking at pairwise conditional correlations, Yu et al. reframe the problem
 as one of optimization of a continuous function, and the algorithm returns a weighted adjacency matrix.
