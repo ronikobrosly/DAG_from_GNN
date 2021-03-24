@@ -19,6 +19,8 @@ setuptools.setup(
     ],
     python_requires='>=3.7.6',
     install_requires=[
+        'matplotlib',
+        'netgraph',
         'networkx',
         'numpy',
         'pandas',
