@@ -30,8 +30,8 @@ class CONFIG:
     no_cuda = True
     seed = 42
     epochs = 300
-    batch_size = 100 # note: should be divisible by sample size, otherwise throw an error
-    lr = 3e-3  # basline rate = 1e-3
+    batch_size = 50 # note: should be divisible by sample size, otherwise throw an error
+    lr = 1e-4  # basline rate = 1e-3
     encoder_hidden = 64
     decoder_hidden = 64
     temp = 0.5
