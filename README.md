@@ -33,7 +33,7 @@ Many thanks to the authors for creating this approach:
 
 The back-end requires python >= 3.7.6.
 
-To play with this locally, first clone the repo via `git clone -b master https://github.com/OrthoProject/Ortho_Web_App.git`. Then create a python virtual environment and install all package dependencies via `pip install -r requirements.txt`.
+To play with this locally, first clone the repo via `git clone -b main git@github.com:ronikobrosly/DAG_from_GNN.git`. Then create a python virtual environment and install all package dependencies via `pip install -r requirements.txt`.
 
 ## Instructions
 
